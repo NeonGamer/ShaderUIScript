@@ -1,0 +1,192 @@
+#if UNITY_EDITOR
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEditor;
+using System.Linq;
+using System.Reflection;
+
+public class NeonsShaderGUI : ShaderGUI
+{
+    private static List<GUIItem> uiItems = new List<GUIItem>();
+    private static Dictionary<Material, Dictionary<string, bool>> openStates = new Dictionary<Material, Dictionary<string, bool>>();
+
+    private static GUIStyle FoldoutStyle()
+    {
+        var newFoldoutStyle = new GUIStyle(GUI.skin.FindStyle("Foldout"))
+        {
+            margin = new RectOffset(9, 0, 0, 0),
+            padding = new RectOffset(15, 0, 0, 0)
+        };
+        newFoldoutStyle.normal = GUI.skin.FindStyle("LargeLabel").normal;
+        newFoldoutStyle.fontSize = 13;
+
+        return newFoldoutStyle;
+    }
+
+    private static GUIStyle HelpBoxStyle(bool margin = false, bool padding = true, bool boarder = true)
+    {
+        var pad = padding ? 3 : 0;
+        var helpBoxStyle = new GUIStyle(boarder ? GUI.skin.FindStyle("HelpBox") : null)
+        {
+            margin = new RectOffset(margin ? 35 : 0, 0, 0, margin ? 2 : 0),
+            padding = new RectOffset(pad, pad, pad, pad)
+        };
+        return helpBoxStyle;
+    }
+    
+    #region UI Stuff
+    private enum UIType
+    {
+        Property,
+        Block,
+        Message
+    }
+
+    private class GUIItem
+    {
+        public UIType uiType;
+        private MaterialProperty materialProperty;
+        private MaterialEditor matEditor;
+        private string displayName;
+        private string parentName;
+        public string fullPath;
+        public bool isRoot;
+        public GUIItem(MaterialEditor me, MaterialProperty materialProp, string name, string parentName, string path, UIType newUIType, bool root)
+        {
+            if (!openStates.ContainsKey((Material)me.target))
+                openStates.Add((Material)me.target, new Dictionary<string, bool>());
+            matEditor = me;
+            materialProperty = materialProp;
+            fullPath = path;
+            this.parentName = parentName;
+            displayName = name;
+            isRoot = root;
+            uiType = newUIType;
+        }
+
+        public void DrawProperty()
+        {
+            switch (uiType)
+            {
+                case UIType.Property:
+                    if (materialProperty.flags != MaterialProperty.PropFlags.HideInInspector) matEditor.ShaderProperty(materialProperty, displayName);
+                    break;
+                case UIType.Block:
+                    if (!openStates[(Material)matEditor.target].ContainsKey(fullPath))
+                        openStates[(Material)matEditor.target].Add(fullPath, false);
+                    using (new GUILayout.VerticalScope(HelpBoxStyle(false, false)))
+                    {
+                        var def = GUI.backgroundColor;
+                        GUI.backgroundColor = new Color(0.2f, 0.2f, 0.2f);
+                        using (new GUILayout.HorizontalScope(HelpBoxStyle()))
+                            openStates[(Material)matEditor.target][fullPath] = EditorGUILayout.Foldout(openStates[(Material)matEditor.target][fullPath], displayName, true, FoldoutStyle());
+                        GUI.backgroundColor = def;
+                        if (openStates[(Material)matEditor.target][fullPath])
+                            using (new GUILayout.VerticalScope(HelpBoxStyle(true, true, false)))
+                                uiItems.Where(x => x.fullPath.StartsWith(fullPath) && x.parentName == displayName && !x.isRoot && x.fullPath != fullPath).ToList().ForEach(x => x.DrawProperty());
+                    }
+                    
+                    break;
+                case UIType.Message:
+                    GUILayout.Label(displayName.Substring(2, displayName.Length-2), "HelpBox");
+                    break;
+            }
+        }
+
+        public void DrawInfo()
+        {
+            switch (uiType)
+            {
+                case UIType.Property:
+                    if (materialProperty.flags != MaterialProperty.PropFlags.HideInInspector) GUILayout.Label($"{uiType} | {displayName} | {fullPath}");
+                    break;
+                case UIType.Block:
+                    using (new GUILayout.VerticalScope("HelpBox"))
+                    {
+                        GUILayout.Label($"{uiType} | {displayName} | {fullPath}");
+                        using (new GUILayout.VerticalScope("HelpBox"))
+                            uiItems.Where(x =>
+                                x.fullPath.StartsWith(fullPath) && 
+                                x.isRoot == false &&
+                                x.fullPath != fullPath).ToList().ForEach(x => x.DrawInfo());
+                    }
+                    break;
+                case UIType.Message:
+                    GUILayout.Label($"{uiType} | {displayName} | {fullPath}");
+                    break;
+            }
+        }
+    }
+    #endregion
+
+    private static void Credits(bool both, string shaderBy, string discord, string editorBy = null)
+    {
+        using var scope = new GUILayout.HorizontalScope(HelpBoxStyle());
+        if (!both)
+        {
+            GUILayout.Label($"Shader By: {shaderBy}");
+            GUILayout.Label($"Editor By: {editorBy}");
+        }
+        else
+        {
+            GUILayout.Label($"Shader and Editor By: {shaderBy}");
+            GUILayout.FlexibleSpace();
+            GUILayout.Label($"Discord: {discord}");
+        }
+    }
+
+    private const string githubURL = "";
+    private static void AutoUpdate()
+    {
+        
+    }
+    
+    public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
+    {
+        uiItems.Clear();
+        foreach (var currProp in properties)
+        {
+            var path = currProp.displayName.Split('/');
+
+            for (int i = 0; i < path.Length; i++)
+            {
+                var fullPath = currProp.displayName.Substring(0, currProp.displayName.LastIndexOf(path[i], StringComparison.Ordinal) + path[i].Length);
+                if (i != path.Length - 1 && !uiItems.Select(x => x.fullPath).Contains(fullPath))
+                {
+                    uiItems.Add(new GUIItem(materialEditor,
+                        properties.FirstOrDefault(x => x.displayName == $"{path[i]} Block"),
+                        path[i],
+                        path[i - 1 == -1 ? 0 : i - 1],
+                        fullPath,
+                        UIType.Block,
+                        i == 0));
+                }
+                else if (path[i].StartsWith("::") && i == path.Length - 1)
+                {
+                    uiItems.Add(new GUIItem(materialEditor, currProp, path[i], path[i - 1 == -1 ? 0 : i - 1], currProp.displayName, UIType.Message, i == 0));
+                }
+                else if (i == path.Length - 1)
+                    uiItems.Add(new GUIItem(materialEditor, currProp, path[i], path[i - 1 == -1 ? 0 : i - 1], currProp.displayName, UIType.Property, i == 0));
+            }
+        }
+
+        //using (new GUILayout.VerticalScope("HelpBox"))
+        {
+            foreach (var item in uiItems.Where(x => x.uiType == UIType.Block && x.isRoot == true))
+            {
+                item.DrawProperty();
+            }
+        }
+        Credits(true, "Neon", "hlsl or Neon#6653");
+        /*using (new GUILayout.VerticalScope("HelpBox"))
+        {
+            foreach (var item in uiItems.Where(x => x.isRoot))
+            {
+                item.DrawInfo();
+            }
+        }*/
+    }
+}
+#endif
