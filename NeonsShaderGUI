@@ -2,10 +2,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
+using System.Net;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 
 public class NeonsShaderGUI : ShaderGUI
 {
@@ -137,14 +141,44 @@ public class NeonsShaderGUI : ShaderGUI
         }
     }
 
-    private const string githubURL = "";
+    private static bool didCheck = false;
+    private const string githubURL = "https://raw.githubusercontent.com/NeonGamer/ShaderUIScript/refs/heads/main/NeonsShaderGUI";
+    private const string fileLoco = "Assets/NeonGamer/Shaders/EyeShaders/!Assets/NeonsShaderGUI.cs";
+    internal static string Sha256Hex(string randomString)
+    {
+        var crypt = new SHA256Managed();
+        var hash = new StringBuilder();
+        byte[] crypto = crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
+        foreach (byte theByte in crypto)
+        {
+            hash.Append(theByte.ToString("x2"));
+        }
+        return hash.ToString();
+    }
+    private static string GetOnlineVersion()
+    {
+        using var wc = new WebClient();
+        return wc.DownloadString(githubURL);
+    }
     private static void AutoUpdate()
     {
+        var currHashStr = Sha256Hex(File.ReadAllText(fileLoco));
+
+        var newCode = GetOnlineVersion();
+        var onlineHashStr = Sha256Hex(newCode);
+
+        if (currHashStr != onlineHashStr)
+        {
+            File.WriteAllText(fileLoco, newCode);
+        }
         
+        didCheck = true;
     }
     
     public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
     {
+        if(!didCheck) AutoUpdate();
+        
         uiItems.Clear();
         foreach (var currProp in properties)
         {
@@ -179,7 +213,7 @@ public class NeonsShaderGUI : ShaderGUI
                 item.DrawProperty();
             }
         }
-        Credits(true, "Neon", "hlsl or Neon#6653");
+        Credits(true, "Neon UPDATE", "hlsl or Neon#6653");
         /*using (new GUILayout.VerticalScope("HelpBox"))
         {
             foreach (var item in uiItems.Where(x => x.isRoot))
