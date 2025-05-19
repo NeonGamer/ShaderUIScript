@@ -213,7 +213,8 @@ public class NeonsShaderGUI : ShaderGUI
                 item.DrawProperty();
             }
         }
-        Credits(true, "Neon UPDATE", "hlsl or Neon#6653");
+        if (GUILayout.Button("Check For Updates")) AutoUpdate();
+        Credits(true, "Neon UPDATED", "hlsl or Neon#6653");
         /*using (new GUILayout.VerticalScope("HelpBox"))
         {
             foreach (var item in uiItems.Where(x => x.isRoot))
