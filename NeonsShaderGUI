@@ -301,13 +301,13 @@ public class NeonsShaderGUI : ShaderGUI
 
         if (currentHash != onlineHashStr)
         {
-            File.WriteAllText(fileLoco, newCode);
-            AssetDatabase.Refresh();
-            Debug.Log("Shader GUI updated!");
-            /*if (EditorUtility.DisplayDialog("Neon's shader GUI", "The UI for Neon's shader has an update available.", "Ok", "Not Now"))
+            
+            if (EditorUtility.DisplayDialog("Neon's shader GUI", "The UI for Neon's shader has an update available.", "Ok", "Not Now"))
             {
-                
-            }*/
+                File.WriteAllText(fileLoco, newCode);
+                AssetDatabase.Refresh();
+                Debug.Log("Shader GUI updated!");
+            }
         }
         else
         {
@@ -362,7 +362,7 @@ public class NeonsShaderGUI : ShaderGUI
                 if (GUILayout.Button("Show Announcement")) AnnouncementWindow.Init(1000, 700);
             }
 
-            Credits(true, "Neon UPDATED", "hlsl or Neon#6653");
+            Credits(true, "Neon", "hlsl or Neon#6653");
             using (new EditorGUILayout.HorizontalScope("HelpBox"))
                 GUILayout.Label(currentHash);
         }
