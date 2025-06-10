@@ -357,7 +357,7 @@ public class NeonsShaderGUI : ShaderGUI
                 if (GUILayout.Button("Show Announcement")) AnnouncementWindow.Init(1000, 700);
             }
 
-            Credits(true, "Neon", "hlsl or Neon#6653");
+            Credits(true, "Neon", "hlsl");
             using (new EditorGUILayout.HorizontalScope("HelpBox"))
                 GUILayout.Label(currentHash);
         }
