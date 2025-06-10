@@ -303,10 +303,15 @@ public class NeonsShaderGUI : ShaderGUI
         {
             File.WriteAllText(fileLoco, newCode);
             AssetDatabase.Refresh();
+            Debug.Log("Shader GUI updated!");
             /*if (EditorUtility.DisplayDialog("Neon's shader GUI", "The UI for Neon's shader has an update available.", "Ok", "Not Now"))
             {
                 
             }*/
+        }
+        else
+        {
+            Debug.Log("Shader GUI up to date!");
         }
         
         AnnouncementWindow.Init(1000, 700);
