@@ -308,9 +308,8 @@ public class NeonsShaderGUI : ShaderGUI
         else
         {
             Debug.Log("Shader GUI up to date!");
+            AnnouncementWindow.Init(1000, 700);
         }
-        
-        AnnouncementWindow.Init(1000, 700);
         
         didCheck = true;
     }
