@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using UnityEngine;
 using UnityEditor;
@@ -13,6 +14,7 @@ using System.Text;
 using Unity.VisualScripting;
 using UnityEditor.EditorTools;
 using UnityEditor.Toolbars;
+using Debug = UnityEngine.Debug;
 
 public class AnnouncementWindow : EditorWindow
 {
@@ -33,6 +35,7 @@ public class AnnouncementWindow : EditorWindow
         win.startHeight = height;
         win.closingT = .07f;
         win.winHeight = height;
+        win.dontShowAgain = Convert.ToBoolean(PlayerPrefs.GetInt("dontShowAgain"));
         win.ShowPopup();
     }
 
@@ -134,6 +137,12 @@ public class AnnouncementWindow : EditorWindow
         using (new GUILayout.HorizontalScope())
         {
             dontShowAgain = EditorGUILayout.ToggleLeft("Don't show again.", dontShowAgain);
+
+            if (GUILayout.Button("Visit n02 Gumroad"))
+            {
+                Process.Start("https://n02.gumroad.com");
+            }
+            
             if (GUILayout.Button("Ok", GUILayout.Width(100)))
             {
                 PlayerPrefs.SetInt("dontShowAgain", Convert.ToInt16(dontShowAgain));
@@ -308,7 +317,7 @@ public class NeonsShaderGUI : ShaderGUI
         else
         {
             Debug.Log("Shader GUI up to date!");
-            AnnouncementWindow.Init(1000, 700);
+            if (PlayerPrefs.GetInt("dontShowAgain") == 0) AnnouncementWindow.Init(1000, 700);
         }
         
         didCheck = true;
@@ -344,7 +353,7 @@ public class NeonsShaderGUI : ShaderGUI
             }
         }
 
-        foreach (var item in uiItems.Where(x => x.isRoot))
+        foreach (var item in uiItems.Where(x => x.uiType == UIType.Block && x.isRoot))
         {
             item.DrawProperty();
         }
