@@ -301,13 +301,9 @@ public class NeonsShaderGUI : ShaderGUI
 
         if (currentHash != onlineHashStr)
         {
-            
-            if (EditorUtility.DisplayDialog("Neon's shader GUI", "The UI for Neon's shader has an update available.", "Ok", "Not Now"))
-            {
-                File.WriteAllText(fileLoco, newCode);
-                AssetDatabase.Refresh();
-                Debug.Log("Shader GUI updated!");
-            }
+            File.WriteAllText(fileLoco, newCode);
+            AssetDatabase.Refresh();
+            Debug.Log("Shader GUI updated!");
         }
         else
         {
