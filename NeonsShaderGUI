@@ -10,11 +10,106 @@ using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using Unity.VisualScripting;
+using UnityEditor.EditorTools;
+using UnityEditor.Toolbars;
+
+public class AnnouncementWindow : EditorWindow
+{
+    public bool dontShowAgain;
+    public WinState winState = WinState.Opening;
+
+    public enum WinState
+    {
+        Opening,
+        Idle,
+        Closing
+    }
+    
+    public static void Init(int width, int height)
+    {
+        var win = CreateInstance<AnnouncementWindow>();
+        win.position = new Rect(Screen.currentResolution.width / 2f - width / 2f,Screen.currentResolution.height / 2f - 100 / 2f, width, 100);
+        win.startHeight = height;
+        win.closingT = .07f;
+        win.winHeight = height;
+        win.ShowPopup();
+    }
+
+    private float startHeight, closingT;
+    private int winHeight;
+
+    private static Texture2D bannerImageBack;
+    private static Texture2D bannerImage
+    {
+        get
+        {
+            if (!bannerImageBack) bannerImageBack = Resources.Load<Texture2D>("Announcement");
+            return bannerImageBack;
+        }
+    }
+    
+    public void Update()
+    {
+        switch (winState)
+        {
+            case WinState.Opening:
+            {
+                var newPosition = position;
+                var oldHeight = newPosition.height;
+        
+                newPosition.height = (int)Mathf.Lerp(newPosition.height, winHeight + 5, .2f);
+                newPosition.y += (oldHeight - newPosition.height) / 2f;
+        
+                position = new Rect(newPosition.x, newPosition.y, newPosition.width, newPosition.height);
+        
+                if (Mathf.Approximately(newPosition.height, winHeight)) winState = WinState.Idle;
+        
+                Repaint();
+                break;
+            }
+            case WinState.Closing:
+            {
+                var newPosition = position;
+                var oldHeight = newPosition.height;
+
+                newPosition.height = Mathf.Lerp(startHeight, 100, closingT);
+                
+                closingT *= 1.08f;
+                
+                newPosition.y += (oldHeight - newPosition.height) / 2f;
+
+                position = newPosition;
+        
+                if (Mathf.Approximately(newPosition.height, 100) || newPosition.height <= 100) Close();
+        
+                Repaint();
+                break;
+            }
+        }
+    }
+
+    public void OnGUI()
+    {
+        //GUILayout.Label($"{position.width}x{position.height}");
+        GUI.Button(GUILayoutUtility.GetRect(position.width, bannerImage.height * (position.width / bannerImage.width)), bannerImage, "ControlLabel");
+        GUILayout.FlexibleSpace();
+        using (new GUILayout.HorizontalScope())
+        {
+            dontShowAgain = EditorGUILayout.ToggleLeft("Don't show again.", dontShowAgain);
+            if (GUILayout.Button("Ok", GUILayout.Width(100)))
+            {
+                PlayerPrefs.SetInt("dontShowAgain", Convert.ToInt16(dontShowAgain));
+                winState = WinState.Closing;
+            }
+        }
+    }
+}
 
 public class NeonsShaderGUI : ShaderGUI
 {
-    private static List<GUIItem> uiItems = new List<GUIItem>();
-    private static Dictionary<Material, Dictionary<string, bool>> openStates = new Dictionary<Material, Dictionary<string, bool>>();
+    private static List<GUIItem> uiItems = new();
+    private static Dictionary<Material, Dictionary<string, bool>> openStates = new();
 
     private static GUIStyle FoldoutStyle()
     {
@@ -29,14 +124,12 @@ public class NeonsShaderGUI : ShaderGUI
         return newFoldoutStyle;
     }
 
-    private static GUIStyle HelpBoxStyle(bool margin = false, bool padding = true, bool boarder = true)
+    private static GUIStyle HelpBoxStyle(bool margin = false, bool padding = true, bool border = true)
     {
         var pad = padding ? 3 : 0;
-        var helpBoxStyle = new GUIStyle(boarder ? GUI.skin.FindStyle("HelpBox") : null)
-        {
-            margin = new RectOffset(margin ? 35 : 0, 0, 0, margin ? 2 : 0),
-            padding = new RectOffset(pad, pad, pad, pad)
-        };
+        GUIStyle helpBoxStyle = border ? new GUIStyle(GUI.skin.FindStyle("HelpBox")) : new GUIStyle();
+        helpBoxStyle.margin = new RectOffset(margin ? 35 : 0, 0, 0, margin ? 2 : 0);
+        helpBoxStyle.padding = new RectOffset(pad, pad, pad, pad);
         return helpBoxStyle;
     }
     
@@ -141,10 +234,12 @@ public class NeonsShaderGUI : ShaderGUI
         }
     }
 
+    private static string currentHash;
     private static bool didCheck = false;
     private const string githubURL = "https://raw.githubusercontent.com/NeonGamer/ShaderUIScript/refs/heads/main/NeonsShaderGUI";
     private const string fileLoco = "Assets/NeonGamer/Shaders/EyeShaders/!Assets/NeonsShaderGUI.cs";
-    internal static string Sha256Hex(string randomString)
+
+    private static string Sha256Hex(string randomString)
     {
         var crypt = new SHA256Managed();
         var hash = new StringBuilder();
@@ -162,17 +257,39 @@ public class NeonsShaderGUI : ShaderGUI
     }
     private static void AutoUpdate()
     {
-        var currHashStr = Sha256Hex(File.ReadAllText(fileLoco));
+        currentHash = Sha256Hex(File.ReadAllText(fileLoco));
 
         var newCode = GetOnlineVersion();
         var onlineHashStr = Sha256Hex(newCode);
 
-        if (currHashStr != onlineHashStr)
+        if (currentHash != onlineHashStr)
         {
-            File.WriteAllText(fileLoco, newCode);
+
+            if (EditorUtility.DisplayDialog("Neon's shader GUI", "The UI for Neon's shader has an update available.", "Ok", "Not Now"))
+            {
+                File.WriteAllText(fileLoco, newCode);
+                AssetDatabase.Refresh();
+            }
         }
         
+        AnnouncementWindow.Init(1000, 700);
+        
         didCheck = true;
+    }
+    
+    private class BGColorScope : IDisposable
+    {
+        private Color ogCol;
+        public BGColorScope(Color color)
+        {
+            ogCol = GUI.backgroundColor;
+            GUI.backgroundColor = color;
+        }
+
+        public void Dispose()
+        {
+            GUI.backgroundColor = ogCol;
+        }
     }
     
     public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
@@ -206,15 +323,24 @@ public class NeonsShaderGUI : ShaderGUI
             }
         }
 
-        //using (new GUILayout.VerticalScope("HelpBox"))
+        foreach (var item in uiItems.Where(x => x.isRoot))
         {
-            foreach (var item in uiItems.Where(x => x.uiType == UIType.Block && x.isRoot == true))
-            {
-                item.DrawProperty();
-            }
+            item.DrawProperty();
         }
-        if (GUILayout.Button("Check For Updates")) AutoUpdate();
-        Credits(true, "Neon UPDATED", "hlsl or Neon#6653");
+
+        using (new BGColorScope(Color.gray))
+        {
+            using (new GUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Check For Updates")) AutoUpdate();
+                if (GUILayout.Button("Show Announcement")) AnnouncementWindow.Init(1000, 700);
+            }
+
+            Credits(true, "Neon UPDATED", "hlsl or Neon#6653");
+            using (new EditorGUILayout.HorizontalScope("HelpBox"))
+                GUILayout.Label(currentHash);
+        }
+        
         /*using (new GUILayout.VerticalScope("HelpBox"))
         {
             foreach (var item in uiItems.Where(x => x.isRoot))
