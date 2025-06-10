@@ -38,14 +38,48 @@ public class AnnouncementWindow : EditorWindow
 
     private float startHeight, closingT;
     private int winHeight;
-
-    private static Texture2D bannerImageBack;
-    private static Texture2D bannerImage
+    private const string announcementURL = "Assets/NeonGamer/Shaders/EyeShaders/!Assets/Resources/Announcement.png";
+    
+    //-1 -> idle
+    //0 -> fetching
+    //1 -> success
+    //2 -> failed
+    private static int announcementState = -1;
+    
+    private static Texture2D announcementBack;
+    private static Texture2D announcement
     {
         get
         {
-            if (!bannerImageBack) bannerImageBack = Resources.Load<Texture2D>("Announcement");
-            return bannerImageBack;
+            if (announcementBack) return announcementBack;
+            if (announcementState == 0 || announcementState == 2)
+                return null;
+            
+            announcementState = 0;
+                
+            var webClient = new WebClient();
+            var image = Resources.Load<Texture2D>("Announcement");
+            if (!image)
+            {
+                var imageBytes = webClient.DownloadData("https://raw.githubusercontent.com/NeonGamer/ShaderUIScript/refs/heads/main/Announcement.png");
+                File.WriteAllBytes(announcementURL, imageBytes);
+                AssetDatabase.Refresh();
+                image = Resources.Load<Texture2D>("Announcement");
+            }
+
+            if (!image)
+            {
+                announcementState = 2;
+                return null;
+            }
+            
+            var texImporter = (TextureImporter)AssetImporter.GetAtPath(announcementURL);
+            texImporter.textureType = TextureImporterType.GUI;
+            texImporter.SaveAndReimport();
+            
+            announcementState = 1;
+            if (!announcementBack) announcementBack = image;
+            return announcementBack;
         }
     }
     
@@ -92,7 +126,10 @@ public class AnnouncementWindow : EditorWindow
     public void OnGUI()
     {
         //GUILayout.Label($"{position.width}x{position.height}");
-        GUI.Button(GUILayoutUtility.GetRect(position.width, bannerImage.height * (position.width / bannerImage.width)), bannerImage, "ControlLabel");
+        if (!announcement || announcementState != 1)
+            GUILayout.Label("Failed to fetch announcement.");
+        else
+            GUI.Button(GUILayoutUtility.GetRect(position.width, announcement.height * (position.width / announcement.width)), announcement, "ControlLabel");            
         GUILayout.FlexibleSpace();
         using (new GUILayout.HorizontalScope())
         {
@@ -235,7 +272,7 @@ public class NeonsShaderGUI : ShaderGUI
     }
 
     private static string currentHash;
-    private static bool didCheck = false;
+    private static bool didCheck;
     private const string githubURL = "https://raw.githubusercontent.com/NeonGamer/ShaderUIScript/refs/heads/main/NeonsShaderGUI";
     private const string fileLoco = "Assets/NeonGamer/Shaders/EyeShaders/!Assets/NeonsShaderGUI.cs";
 
@@ -264,34 +301,18 @@ public class NeonsShaderGUI : ShaderGUI
 
         if (currentHash != onlineHashStr)
         {
-
-            if (EditorUtility.DisplayDialog("Neon's shader GUI", "The UI for Neon's shader has an update available.", "Ok", "Not Now"))
+            File.WriteAllText(fileLoco, newCode);
+            AssetDatabase.Refresh();
+            /*if (EditorUtility.DisplayDialog("Neon's shader GUI", "The UI for Neon's shader has an update available.", "Ok", "Not Now"))
             {
-                File.WriteAllText(fileLoco, newCode);
-                AssetDatabase.Refresh();
-            }
+                
+            }*/
         }
         
         AnnouncementWindow.Init(1000, 700);
         
         didCheck = true;
     }
-    
-    private class BGColorScope : IDisposable
-    {
-        private Color ogCol;
-        public BGColorScope(Color color)
-        {
-            ogCol = GUI.backgroundColor;
-            GUI.backgroundColor = color;
-        }
-
-        public void Dispose()
-        {
-            GUI.backgroundColor = ogCol;
-        }
-    }
-    
     public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
     {
         if(!didCheck) AutoUpdate();
@@ -348,6 +369,21 @@ public class NeonsShaderGUI : ShaderGUI
                 item.DrawInfo();
             }
         }*/
+    }
+    
+    private class BGColorScope : IDisposable
+    {
+        private Color ogCol;
+        public BGColorScope(Color color)
+        {
+            ogCol = GUI.backgroundColor;
+            GUI.backgroundColor = color;
+        }
+
+        public void Dispose()
+        {
+            GUI.backgroundColor = ogCol;
+        }
     }
 }
 #endif
