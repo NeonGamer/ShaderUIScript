@@ -1,6 +1,5 @@
 #if UNITY_EDITOR
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -8,12 +7,8 @@ using UnityEngine;
 using UnityEditor;
 using System.Linq;
 using System.Net;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
-using Unity.VisualScripting;
-using UnityEditor.EditorTools;
-using UnityEditor.Toolbars;
 using Debug = UnityEngine.Debug;
 
 public class AnnouncementWindow : EditorWindow
@@ -41,7 +36,7 @@ public class AnnouncementWindow : EditorWindow
 
     private float startHeight, closingT;
     private int winHeight;
-    private const string announcementURL = "Assets/NeonGamer/Shaders/EyeShaders/!Assets/Resources/Announcement.png";
+    private const string announcementPath = "Assets/NeonGamer/Shaders/EyeShaders/!Assets/Resources/Announcement.png";
     
     //-1 -> idle
     //0 -> fetching
@@ -65,7 +60,8 @@ public class AnnouncementWindow : EditorWindow
             if (!image)
             {
                 var imageBytes = webClient.DownloadData("https://raw.githubusercontent.com/NeonGamer/ShaderUIScript/refs/heads/main/Announcement.png");
-                File.WriteAllBytes(announcementURL, imageBytes);
+                Directory.CreateDirectory(Path.GetDirectoryName(announcementPath));
+                File.WriteAllBytes(announcementPath, imageBytes);
                 AssetDatabase.Refresh();
                 image = Resources.Load<Texture2D>("Announcement");
             }
@@ -76,7 +72,7 @@ public class AnnouncementWindow : EditorWindow
                 return null;
             }
             
-            var texImporter = (TextureImporter)AssetImporter.GetAtPath(announcementURL);
+            var texImporter = (TextureImporter)AssetImporter.GetAtPath(announcementPath);
             texImporter.textureType = TextureImporterType.GUI;
             texImporter.SaveAndReimport();
             
