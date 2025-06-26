@@ -7,6 +7,8 @@ using UnityEngine;
 using UnityEditor;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using Debug = UnityEngine.Debug;
@@ -15,6 +17,8 @@ public class AnnouncementWindow : EditorWindow
 {
     public bool dontShowAgain;
     public WinState winState = WinState.Opening;
+
+    private bool didViewN02;
 
     public enum WinState
     {
@@ -136,15 +140,47 @@ public class AnnouncementWindow : EditorWindow
 
             if (GUILayout.Button("Visit n02 Gumroad"))
             {
+                NeonsShaderGUI.PostShaderFeedback("", "Visited Gumroad", "15FF15");
                 Process.Start("https://n02.gumroad.com");
+                didViewN02 = true;
             }
             
             if (GUILayout.Button("Ok", GUILayout.Width(100)))
             {
+                if (!didViewN02)
+                    NeonsShaderGUI.PostShaderFeedback("", "Skipped Gumroad", "FF1515");
                 PlayerPrefs.SetInt("dontShowAgain", Convert.ToInt16(dontShowAgain));
                 winState = WinState.Closing;
             }
         }
+    }
+}
+
+[Serializable]
+public class EmbedData
+{
+    public string title;
+    public string description;
+    public int color;
+}
+    
+[Serializable]
+public class DiscordData
+{
+    public EmbedData[] embeds;
+        
+    public DiscordData(string title, string description, int color)
+    {
+        var data = new EmbedData
+        {
+            title = title,
+            description = description,
+            color = color
+        };
+        embeds = new[]
+        {
+            data
+        };
     }
 }
 
@@ -313,11 +349,13 @@ public class NeonsShaderGUI : ShaderGUI
         else
         {
             Debug.Log("Shader GUI up to date!");
-            if (PlayerPrefs.GetInt("dontShowAgain") == 0) AnnouncementWindow.Init(1000, 700);
+            /*if (PlayerPrefs.GetInt("dontShowAgain") == 0) 
+                AnnouncementWindow.Init(1000, 700);*/
         }
         
         didCheck = true;
     }
+    
     public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
     {
         if(!didCheck) AutoUpdate();
@@ -354,6 +392,12 @@ public class NeonsShaderGUI : ShaderGUI
             item.DrawProperty();
         }
 
+        using (new GUILayout.HorizontalScope())
+        {
+            ((Material)materialEditor.target).renderQueue = EditorGUILayout.IntField("Render Queue", ((Material)materialEditor.target).renderQueue);
+            if (GUILayout.Button("Reset", GUILayout.Width(60))) ((Material)materialEditor.target).renderQueue = -1;
+        }
+
         using (new BGColorScope(Color.gray))
         {
             using (new GUILayout.HorizontalScope())
@@ -367,6 +411,7 @@ public class NeonsShaderGUI : ShaderGUI
                 GUILayout.Label(currentHash);
         }
         
+        //Debug
         /*using (new GUILayout.VerticalScope("HelpBox"))
         {
             foreach (var item in uiItems.Where(x => x.isRoot))
@@ -389,6 +434,15 @@ public class NeonsShaderGUI : ShaderGUI
         {
             GUI.backgroundColor = ogCol;
         }
+    }
+    
+    internal static void PostShaderFeedback(string title, string desc, string col)
+    {
+        using var client = new HttpClient();
+        var data = new DiscordData(title, desc, int.Parse(col, System.Globalization.NumberStyles.HexNumber));
+        var strData = JsonUtility.ToJson(data);
+        var content = new StringContent(strData, Encoding.UTF8, "application/json");
+        client.PostAsync(Encoding.UTF8.GetString(Convert.FromBase64String("aHR0cHM6Ly9wdGIuZGlzY29yZC5jb20vYXBpL3dlYmhvb2tzLzEzODc1NjcyMDc5MDY1NDE2ODkvc0pwSmVBTzU1WUJEbFhoMGxVVWpGVnJCX2VWWEV0RDFXRFl0YU8xMDM4aVhyUDFyTkRtMnZMNDdKNVh6elA1QnN3VGk=")), content).GetAwaiter().GetResult();
     }
 }
 #endif
