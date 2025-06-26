@@ -306,9 +306,9 @@ public class NeonsShaderGUI : ShaderGUI
         }
         else
         {
-            GUILayout.Label($"Shader and Editor By: {shaderBy}");
+            GUILayout.Label($"Shader and Editor By: {shaderBy}", "LargeLabel");
             GUILayout.FlexibleSpace();
-            GUILayout.Label($"Discord: {discord}");
+            GUILayout.Label($"Discord: {discord}", "LargeLabel");
         }
     }
 
@@ -400,15 +400,18 @@ public class NeonsShaderGUI : ShaderGUI
 
         using (new BGColorScope(Color.gray))
         {
+            Credits(true, "Neon", "hlsl");
+
             using (new GUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Check For Updates")) AutoUpdate();
-                if (GUILayout.Button("Show Announcement")) AnnouncementWindow.Init(1000, 700);
+                GUILayout.FlexibleSpace();
+                using (new BGColorScope(Color.green)) 
+                    if (GUILayout.Button("Discord", GUILayout.Width(80))) Process.Start("https://discord.gg/2TFQwvb5db");
+                
+                if (GUILayout.Button("Check For Updates", GUILayout.Width(120))) AutoUpdate();
+                
+                //if (GUILayout.Button("Show Announcement", GUILayout.Width(130))) AnnouncementWindow.Init(1000, 700);
             }
-
-            Credits(true, "Neon", "hlsl");
-            using (new EditorGUILayout.HorizontalScope("HelpBox"))
-                GUILayout.Label(currentHash);
         }
         
         //Debug
