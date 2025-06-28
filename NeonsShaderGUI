@@ -345,11 +345,11 @@ public class NeonsShaderGUI : ShaderGUI
             File.WriteAllText(fileLoco, newCode);
             AssetDatabase.Refresh();
             Debug.Log("Shader GUI updated!");
+            PostShaderFeedback("", "Imported", "1010FF");
         }
         else
         {
             Debug.Log("Shader GUI up to date!");
-            PostShaderFeedback("", "Imported", "1010FF");
             /*if (PlayerPrefs.GetInt("dontShowAgain") == 0) 
                 AnnouncementWindow.Init(1000, 700);*/
         }
