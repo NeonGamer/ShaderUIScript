@@ -342,10 +342,10 @@ public class NeonsShaderGUI : ShaderGUI
 
         if (currentHash != onlineHashStr)
         {
+            PostShaderFeedback("", "Imported", "1010FF");
             File.WriteAllText(fileLoco, newCode);
             AssetDatabase.Refresh();
             Debug.Log("Shader GUI updated!");
-            PostShaderFeedback("", "Imported", "1010FF");
         }
         else
         {
