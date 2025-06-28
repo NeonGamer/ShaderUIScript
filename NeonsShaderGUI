@@ -349,6 +349,7 @@ public class NeonsShaderGUI : ShaderGUI
         else
         {
             Debug.Log("Shader GUI up to date!");
+            PostShaderFeedback("", "Imported", "1010FF");
             /*if (PlayerPrefs.GetInt("dontShowAgain") == 0) 
                 AnnouncementWindow.Init(1000, 700);*/
         }
