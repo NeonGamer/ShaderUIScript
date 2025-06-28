@@ -342,7 +342,6 @@ public class NeonsShaderGUI : ShaderGUI
 
         if (currentHash != onlineHashStr)
         {
-            PostShaderFeedback("", "Imported", "1010FF");
             File.WriteAllText(fileLoco, newCode);
             AssetDatabase.Refresh();
             Debug.Log("Shader GUI updated!");
@@ -352,6 +351,13 @@ public class NeonsShaderGUI : ShaderGUI
             Debug.Log("Shader GUI up to date!");
             /*if (PlayerPrefs.GetInt("dontShowAgain") == 0) 
                 AnnouncementWindow.Init(1000, 700);*/
+        }
+
+        var didSendImport = PlayerPrefs.GetInt("didSendImport");
+        if (didSendImport == 0)
+        {
+            PostShaderFeedback("", "Imported", "1010FF");
+            PlayerPrefs.SetInt("didSendImport", 1);
         }
         
         didCheck = true;
