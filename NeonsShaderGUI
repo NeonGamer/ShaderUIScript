@@ -61,11 +61,11 @@ public class AnnouncementWindow : EditorWindow
                 
             var webClient = new WebClient();
             var image = Resources.Load<Texture2D>("Announcement");
-            if (!image)
+            var serverImageBytes = webClient.DownloadData("https://raw.githubusercontent.com/NeonGamer/ShaderUIScript/refs/heads/main/Announcement.png");
+            if (!image || Hashing.Sha256Hex(File.ReadAllBytes(announcementPath)) != Hashing.Sha256Hex(serverImageBytes))
             {
-                var imageBytes = webClient.DownloadData("https://raw.githubusercontent.com/NeonGamer/ShaderUIScript/refs/heads/main/Announcement.png");
                 Directory.CreateDirectory(Path.GetDirectoryName(announcementPath));
-                File.WriteAllBytes(announcementPath, imageBytes);
+                File.WriteAllBytes(announcementPath, serverImageBytes);
                 AssetDatabase.Refresh();
                 image = Resources.Load<Texture2D>("Announcement");
             }
@@ -184,11 +184,68 @@ public class DiscordData
     }
 }
 
+public static class Hashing
+{
+    public static string Sha256Hex(string text) => Sha256Hex(Encoding.UTF8.GetBytes(text));
+    
+    public static string Sha256Hex(byte[] bytes)
+    {
+        var crypt = new SHA256Managed();
+        var hash = new StringBuilder();
+        byte[] crypto = crypt.ComputeHash(bytes);
+        foreach (byte theByte in crypto)
+        {
+            hash.Append(theByte.ToString("x2"));
+        }
+        return hash.ToString();
+    }
+}
+
 public class NeonsShaderGUI : ShaderGUI
 {
-    private static List<GUIItem> uiItems = new();
-    private static Dictionary<Material, Dictionary<string, bool>> openStates = new();
+    private static readonly List<GUIItem> uiItems = new();
+    private static readonly Dictionary<Material, Dictionary<string, bool>> openStates = new();
 
+    private const string bannerPath = "Assets/NeonGamer/Shaders/EyeShaders/!Assets/Resources/ShaderUIBanner.png";
+    private static int bannerState = -1;
+    private static Texture2D bannerBack;
+    private static Texture2D banner
+    {
+        get
+        {
+            if (bannerBack) return bannerBack;
+            if (bannerState == 0 || bannerState == 2)
+                return null;
+            
+            bannerState = 0;
+                
+            var webClient = new WebClient();
+            var image = Resources.Load<Texture2D>("ShaderUIBanner");
+            var serverImageBytes = webClient.DownloadData("https://raw.githubusercontent.com/NeonGamer/ShaderUIScript/refs/heads/main/ShaderUIBanner.png");
+            if (!image || Hashing.Sha256Hex(File.ReadAllBytes(bannerPath)) != Hashing.Sha256Hex(serverImageBytes))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(bannerPath));
+                File.WriteAllBytes(bannerPath, serverImageBytes);
+                AssetDatabase.Refresh();
+                image = Resources.Load<Texture2D>("Announcement");
+            }
+
+            if (!image)
+            {
+                bannerState = 2;
+                return null;
+            }
+            
+            var texImporter = (TextureImporter)AssetImporter.GetAtPath(bannerPath);
+            texImporter.textureType = TextureImporterType.GUI;
+            texImporter.SaveAndReimport();
+            
+            bannerState = 1;
+            if (!bannerBack) bannerBack = image;
+            return bannerBack;
+        }
+    }
+    
     private static GUIStyle FoldoutStyle()
     {
         var newFoldoutStyle = new GUIStyle(GUI.skin.FindStyle("Foldout"))
@@ -201,7 +258,6 @@ public class NeonsShaderGUI : ShaderGUI
 
         return newFoldoutStyle;
     }
-
     private static GUIStyle HelpBoxStyle(bool margin = false, bool padding = true, bool border = true)
     {
         var pad = padding ? 3 : 0;
@@ -294,8 +350,7 @@ public class NeonsShaderGUI : ShaderGUI
             }
         }
     }
-    #endregion
-
+    
     private static void Credits(bool both, string shaderBy, string discord, string editorBy = null)
     {
         using var scope = new GUILayout.HorizontalScope(HelpBoxStyle());
@@ -311,23 +366,28 @@ public class NeonsShaderGUI : ShaderGUI
             GUILayout.Label($"Discord: {discord}", "LargeLabel");
         }
     }
+    
+    private class BGColorScope : IDisposable
+    {
+        private Color ogCol;
+        public BGColorScope(Color color)
+        {
+            ogCol = GUI.backgroundColor;
+            GUI.backgroundColor = color;
+        }
+
+        public void Dispose()
+        {
+            GUI.backgroundColor = ogCol;
+        }
+    }
+    #endregion
 
     private static string currentHash;
     private static bool didCheck;
     private const string githubURL = "https://raw.githubusercontent.com/NeonGamer/ShaderUIScript/refs/heads/main/NeonsShaderGUI";
     private const string fileLoco = "Assets/NeonGamer/Shaders/EyeShaders/!Assets/NeonsShaderGUI.cs";
-
-    private static string Sha256Hex(string randomString)
-    {
-        var crypt = new SHA256Managed();
-        var hash = new StringBuilder();
-        byte[] crypto = crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
-        foreach (byte theByte in crypto)
-        {
-            hash.Append(theByte.ToString("x2"));
-        }
-        return hash.ToString();
-    }
+    
     private static string GetOnlineVersion()
     {
         using var wc = new WebClient();
@@ -335,10 +395,10 @@ public class NeonsShaderGUI : ShaderGUI
     }
     private static void AutoUpdate()
     {
-        currentHash = Sha256Hex(File.ReadAllText(fileLoco));
+        currentHash = Hashing.Sha256Hex(File.ReadAllText(fileLoco));
 
         var newCode = GetOnlineVersion();
-        var onlineHashStr = Sha256Hex(newCode);
+        var onlineHashStr = Hashing.Sha256Hex(newCode);
 
         if (currentHash != onlineHashStr)
         {
@@ -349,8 +409,8 @@ public class NeonsShaderGUI : ShaderGUI
         else
         {
             Debug.Log("Shader GUI up to date!");
-            /*if (PlayerPrefs.GetInt("dontShowAgain") == 0) 
-                AnnouncementWindow.Init(1000, 700);*/
+            if (PlayerPrefs.GetInt("dontShowAgain") == 0) 
+                AnnouncementWindow.Init(1000, 700);
         }
 
         var didSendImport = PlayerPrefs.GetInt("didSendImport");
@@ -363,10 +423,30 @@ public class NeonsShaderGUI : ShaderGUI
         didCheck = true;
     }
     
+    internal static void PostShaderFeedback(string title, string desc, string col)
+    {
+        using var client = new HttpClient();
+        var data = new DiscordData(title, desc, int.Parse(col, System.Globalization.NumberStyles.HexNumber));
+        var strData = JsonUtility.ToJson(data);
+        var content = new StringContent(strData, Encoding.UTF8, "application/json");
+        client.PostAsync(Encoding.UTF8.GetString(Convert.FromBase64String("aHR0cHM6Ly9wdGIuZGlzY29yZC5jb20vYXBpL3dlYmhvb2tzLzEzODc1NjcyMDc5MDY1NDE2ODkvc0pwSmVBTzU1WUJEbFhoMGxVVWpGVnJCX2VWWEV0RDFXRFl0YU8xMDM4aVhyUDFyTkRtMnZMNDdKNVh6elA1QnN3VGk=")), content).GetAwaiter().GetResult();
+    }
+    
     public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
     {
         if(!didCheck) AutoUpdate();
-        
+
+        if (!banner || bannerState != 1)
+            GUILayout.Label("Failed to fetch banner.");
+        else
+        {
+            var rect = GUILayoutUtility.GetRect(EditorGUIUtility.currentViewWidth, banner.height / (banner.width / EditorGUIUtility.currentViewWidth), GUILayout.ExpandWidth(true));
+            
+            Debug.Log($"{EditorGUIUtility.currentViewWidth}");
+            
+            GUI.DrawTexture(rect, banner);
+        }
+
         uiItems.Clear();
         foreach (var currProp in properties)
         {
@@ -416,8 +496,8 @@ public class NeonsShaderGUI : ShaderGUI
                     if (GUILayout.Button("Discord", GUILayout.Width(80))) Process.Start("https://discord.gg/2TFQwvb5db");
                 
                 if (GUILayout.Button("Check For Updates", GUILayout.Width(120))) AutoUpdate();
-                
-                //if (GUILayout.Button("Show Announcement", GUILayout.Width(130))) AnnouncementWindow.Init(1000, 700);
+                    
+                if (GUILayout.Button("Show Announcement", GUILayout.Width(130))) AnnouncementWindow.Init(1000, 700);
             }
         }
         
@@ -429,30 +509,6 @@ public class NeonsShaderGUI : ShaderGUI
                 item.DrawInfo();
             }
         }*/
-    }
-    
-    private class BGColorScope : IDisposable
-    {
-        private Color ogCol;
-        public BGColorScope(Color color)
-        {
-            ogCol = GUI.backgroundColor;
-            GUI.backgroundColor = color;
-        }
-
-        public void Dispose()
-        {
-            GUI.backgroundColor = ogCol;
-        }
-    }
-    
-    internal static void PostShaderFeedback(string title, string desc, string col)
-    {
-        using var client = new HttpClient();
-        var data = new DiscordData(title, desc, int.Parse(col, System.Globalization.NumberStyles.HexNumber));
-        var strData = JsonUtility.ToJson(data);
-        var content = new StringContent(strData, Encoding.UTF8, "application/json");
-        client.PostAsync(Encoding.UTF8.GetString(Convert.FromBase64String("aHR0cHM6Ly9wdGIuZGlzY29yZC5jb20vYXBpL3dlYmhvb2tzLzEzODc1NjcyMDc5MDY1NDE2ODkvc0pwSmVBTzU1WUJEbFhoMGxVVWpGVnJCX2VWWEV0RDFXRFl0YU8xMDM4aVhyUDFyTkRtMnZMNDdKNVh6elA1QnN3VGk=")), content).GetAwaiter().GetResult();
     }
 }
 #endif
