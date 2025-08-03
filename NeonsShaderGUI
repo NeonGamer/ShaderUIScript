@@ -140,7 +140,7 @@ public class AnnouncementWindow : EditorWindow
 
             if (GUILayout.Button("Visit n02 Gumroad"))
             {
-                NeonsShaderGUI.PostShaderFeedback("", "Visited Gumroad", "15FF15");
+                //NeonsShaderGUI.PostShaderFeedback("", "Visited Gumroad", "15FF15");
                 Process.Start("https://n02.gumroad.com");
                 didViewN02 = true;
             }
@@ -148,7 +148,7 @@ public class AnnouncementWindow : EditorWindow
             if (GUILayout.Button("Ok", GUILayout.Width(100)))
             {
                 if (!didViewN02)
-                    NeonsShaderGUI.PostShaderFeedback("", "Skipped Gumroad", "FF1515");
+                    //NeonsShaderGUI.PostShaderFeedback("", "Skipped Gumroad", "FF1515");
                 PlayerPrefs.SetInt("dontShowAgain", Convert.ToInt16(dontShowAgain));
                 winState = WinState.Closing;
             }
@@ -227,7 +227,7 @@ public class NeonsShaderGUI : ShaderGUI
                 Directory.CreateDirectory(Path.GetDirectoryName(bannerPath));
                 File.WriteAllBytes(bannerPath, serverImageBytes);
                 AssetDatabase.Refresh();
-                image = Resources.Load<Texture2D>("Announcement");
+                image = Resources.Load<Texture2D>("ShaderUIBanner");
             }
 
             if (!image)
@@ -416,7 +416,7 @@ public class NeonsShaderGUI : ShaderGUI
         var didSendImport = PlayerPrefs.GetInt("didSendImport");
         if (didSendImport == 0)
         {
-            PostShaderFeedback("", "Imported", "1010FF");
+            //PostShaderFeedback("", "Imported", "1010FF");
             PlayerPrefs.SetInt("didSendImport", 1);
         }
         
