@@ -441,9 +441,7 @@ public class NeonsShaderGUI : ShaderGUI
         else
         {
             var rect = GUILayoutUtility.GetRect(EditorGUIUtility.currentViewWidth, banner.height / (banner.width / EditorGUIUtility.currentViewWidth), GUILayout.ExpandWidth(true));
-            
-            Debug.Log($"{EditorGUIUtility.currentViewWidth}");
-            
+
             GUI.DrawTexture(rect, banner);
         }
 
