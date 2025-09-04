@@ -410,7 +410,7 @@ public class NeonsShaderGUI : ShaderGUI
         {
             Debug.Log("Shader GUI up to date!");
             if (PlayerPrefs.GetInt("dontShowAgain") == 0) 
-                AnnouncementWindow.Init(1000, 700);
+                //AnnouncementWindow.Init(1000, 700);
         }
 
         var didSendImport = PlayerPrefs.GetInt("didSendImport");
