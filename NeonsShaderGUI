@@ -49,7 +49,7 @@ public class AnnouncementWindow : EditorWindow
     private static int announcementState = -1;
     
     private static Texture2D announcementBack;
-    private static Texture2D announcement
+    public static Texture2D announcement
     {
         get
         {
@@ -383,6 +383,7 @@ public class NeonsShaderGUI : ShaderGUI
     }
     #endregion
 
+    private static bool dontShowAnnouncement, dontShowAnnouncementUI;
     private static string currentHash;
     private static bool didCheck;
     private const string githubURL = "https://raw.githubusercontent.com/NeonGamer/ShaderUIScript/refs/heads/main/NeonsShaderGUI";
@@ -395,6 +396,8 @@ public class NeonsShaderGUI : ShaderGUI
     }
     private static void AutoUpdate()
     {
+        dontShowAnnouncement = Convert.ToBoolean(PlayerPrefs.GetInt("dontShowAgain"));
+        
         currentHash = Hashing.Sha256Hex(File.ReadAllText(fileLoco));
 
         var newCode = GetOnlineVersion();
@@ -402,6 +405,7 @@ public class NeonsShaderGUI : ShaderGUI
 
         if (currentHash != onlineHashStr)
         {
+            PlayerPrefs.SetInt("dontShowAgain", 0);
             File.WriteAllText(fileLoco, newCode);
             AssetDatabase.Refresh();
             Debug.Log("Shader GUI updated!");
@@ -436,6 +440,28 @@ public class NeonsShaderGUI : ShaderGUI
     {
         if(!didCheck) AutoUpdate();
 
+        if (!dontShowAnnouncement)
+        {
+            var rect = GUILayoutUtility.GetRect(EditorGUIUtility.currentViewWidth, AnnouncementWindow.announcement.height / (AnnouncementWindow.announcement.width / EditorGUIUtility.currentViewWidth), GUILayout.ExpandWidth(true));
+
+            GUI.DrawTexture(rect, AnnouncementWindow.announcement);
+                
+            using (new BGColorScope(Color.gray))
+            using (new GUILayout.HorizontalScope())
+            {
+                using (new BGColorScope(Color.green)) 
+                    if (GUILayout.Button("Discord", GUILayout.Width(80))) Process.Start("https://discord.gg/2TFQwvb5db");
+                dontShowAnnouncementUI = EditorGUILayout.ToggleLeft("Don't show again.", dontShowAnnouncementUI);
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("Close Announcement", GUILayout.ExpandWidth(false)))
+                {
+                    dontShowAnnouncement = true;
+                    PlayerPrefs.SetInt("dontShowAgain", Convert.ToInt16(dontShowAnnouncementUI));
+                }
+            }
+            return;
+        }
+        
         if (!banner || bannerState != 1)
             GUILayout.Label("Failed to fetch banner.");
         else
@@ -494,8 +520,9 @@ public class NeonsShaderGUI : ShaderGUI
                     if (GUILayout.Button("Discord", GUILayout.Width(80))) Process.Start("https://discord.gg/2TFQwvb5db");
                 
                 if (GUILayout.Button("Check For Updates", GUILayout.Width(120))) AutoUpdate();
-                    
-                if (GUILayout.Button("Show Announcement", GUILayout.Width(130))) AnnouncementWindow.Init(1000, 700);
+
+                if (GUILayout.Button("Show Announcement", GUILayout.Width(130)))
+                    dontShowAnnouncement = false; //AnnouncementWindow.Init(1000, 700);
             }
         }
         
